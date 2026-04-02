@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * ai-codex — Generate a compact codebase index for AI assistants.
  *
@@ -64,6 +64,7 @@ function parseArgs(): Config {
     switch (args[i]) {
       case '--output':
       case '-o':
+        if (i + 1 >= args.length) { console.error('Error: --output requires a value'); process.exit(1); }
         config.output = args[++i];
         break;
       case '--include':
@@ -77,8 +78,13 @@ function parseArgs(): Config {
         }
         break;
       case '--schema':
+        if (i + 1 >= args.length) { console.error('Error: --schema requires a value'); process.exit(1); }
         config.schema = args[++i];
         break;
+      case '--version':
+      case '-v':
+        console.log('ai-codex v1.0.0');
+        process.exit(0);
       case '--help':
       case '-h':
         printHelp();
@@ -101,6 +107,7 @@ Options:
   --include <dirs...>   Directories to scan (default: auto-detect)
   --exclude <dirs...>   Directories to skip
   --schema <path>       Path to Prisma schema file (auto-detected)
+  --version, -v         Show version
   --help, -h            Show this help
 
 Config file:
@@ -147,9 +154,10 @@ function walk(dir: string, extFilter?: string[], skipDirs?: Set<string>): string
   }
   for (const entry of entries) {
     if (skip.has(entry.name)) continue;
+    if (entry.isSymbolicLink()) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      results.push(...walk(full, extFilter, skip));
+      for (const f of walk(full, extFilter, skip)) results.push(f);
     } else if (entry.isFile()) {
       if (shouldSkipFile(entry.name)) continue;
       if (extFilter && !extFilter.some((ext) => entry.name.endsWith(ext))) continue;
@@ -172,7 +180,8 @@ function pathToRoute(filePath: string, base: string): string {
   rel = path.dirname(rel);
   // Strip Next.js route groups: (name)
   rel = rel.replace(/\([\w-]+\)\/?/g, '');
-  // Convert [param] to :param
+  // Convert [[...param]] optional catch-all, then [param] to :param
+  rel = rel.replace(/\[\[([^\]]+)\]\]/g, ':$1');
   rel = rel.replace(/\[([^\]]+)\]/g, ':$1');
   rel = '/' + rel.replace(/\\/g, '/');
   if (rel === '/.') rel = '/';
@@ -194,6 +203,7 @@ interface FrameworkInfo {
   componentDirs: string[];
   hasPrisma: boolean;
   prismaSchemaPath: string | null;
+  skipDirs: Set<string>;
 }
 
 function detectFramework(config: Config): FrameworkInfo {
@@ -204,6 +214,7 @@ function detectFramework(config: Config): FrameworkInfo {
     componentDirs: [],
     hasPrisma: false,
     prismaSchemaPath: null,
+    skipDirs: new Set(DEFAULT_SKIP_DIRS),
   };
 
   // Detect Next.js
@@ -275,12 +286,13 @@ function findDirsNamed(base: string, targetName: string): string[] {
   }
   for (const entry of entries) {
     if (DEFAULT_SKIP_DIRS.has(entry.name)) continue;
+    if (entry.isSymbolicLink()) continue;
     if (!entry.isDirectory()) continue;
     const full = path.join(base, entry.name);
     if (entry.name === targetName) {
       results.push(full);
     } else {
-      results.push(...findDirsNamed(full, targetName));
+      for (const f of findDirsNamed(full, targetName)) results.push(f);
     }
   }
   return results;
@@ -296,10 +308,13 @@ function generateRoutes(framework: FrameworkInfo): string | null {
   const apiDir = path.join(framework.appDir, 'api');
   if (!fs.existsSync(apiDir)) return null;
 
-  const routeFiles = walk(apiDir, ['route.ts', 'route.js']);
+  const routeFiles = walk(apiDir, ['route.ts', 'route.js'], framework.skipDirs);
   if (routeFiles.length === 0) return null;
 
   const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+  const HTTP_METHOD_REGEXES = new Map<string, RegExp>(
+    HTTP_METHODS.map((m) => [m, new RegExp(`export\\s+(async\\s+)?function\\s+${m}\\b`)])
+  );
 
   interface RouteInfo {
     route: string;
@@ -317,7 +332,7 @@ function generateRoutes(framework: FrameworkInfo): string | null {
 
     const methods: string[] = [];
     for (const m of HTTP_METHODS) {
-      if (new RegExp(`export\\s+(async\\s+)?function\\s+${m}\\b`).test(content)) {
+      if (HTTP_METHOD_REGEXES.get(m)!.test(content)) {
         methods.push(m);
       }
     }
@@ -394,7 +409,7 @@ function generateRoutes(framework: FrameworkInfo): string | null {
 function generatePages(framework: FrameworkInfo): string | null {
   if (!framework.appDir) return null;
 
-  const pageFiles = walk(framework.appDir, ['page.tsx', 'page.jsx', 'page.ts', 'page.js']);
+  const pageFiles = walk(framework.appDir, ['page.tsx', 'page.jsx', 'page.ts', 'page.js'], framework.skipDirs);
   if (pageFiles.length === 0) return null;
 
   interface PageInfo {
@@ -410,7 +425,7 @@ function generatePages(framework: FrameworkInfo): string | null {
     if (!content) continue;
 
     const route = pathToRoute(file, framework.appDir!);
-    const isClient = /^['"]use client['"]/.test(content.trimStart());
+    const isClient = /^(?:'use client'|"use client")/.test(content.slice(0, 50).trimStart());
 
     let exportName = '';
     const exportMatch = content.match(/export\s+default\s+function\s+(\w+)/);
@@ -479,7 +494,7 @@ function generateLib(framework: FrameworkInfo, config: Config): string | null {
 
   for (const libDir of scanDirs) {
     if (!fs.existsSync(libDir)) continue;
-    const files = walk(libDir, ['.ts', '.tsx', '.js', '.jsx']);
+    const files = walk(libDir, ['.ts', '.tsx', '.js', '.jsx'], framework.skipDirs);
 
     for (const file of files) {
       const content = readFileSafe(file);
@@ -715,7 +730,7 @@ function generateSchema(framework: FrameworkInfo): string | null {
     const commentMatch = trimmed.match(/\/\/\s*(.+)/);
     if (commentMatch) comment = commentMatch[1].trim();
 
-    currentModel.fields.push({ name: fieldName, type: fieldType.replace('?', '?'), flags, comment });
+    currentModel.fields.push({ name: fieldName, type: fieldType.replace('?', ''), flags, comment });
   }
 
   const output: string[] = [
@@ -806,7 +821,7 @@ function generateComponents(framework: FrameworkInfo): string | null {
     if (!fs.existsSync(dir)) continue;
     if (dir.endsWith('/ui') || dir.includes('/ui/')) continue;
 
-    const files = walk(dir, ['.tsx', '.jsx']);
+    const files = walk(dir, ['.tsx', '.jsx'], framework.skipDirs);
     const relGroup = path.relative(ROOT, dir);
 
     const components: ComponentInfo[] = [];
@@ -817,7 +832,7 @@ function generateComponents(framework: FrameworkInfo): string | null {
       const content = readFileSafe(file);
       if (!content) continue;
 
-      const isClient = /^['"]use client['"]/.test(content.trimStart());
+      const isClient = /^(?:'use client'|"use client")/.test(content.slice(0, 50).trimStart());
 
       let name = '';
       const defaultFnMatch = content.match(/export\s+default\s+function\s+(\w+)/);
@@ -922,20 +937,24 @@ function main() {
 
   const config = parseArgs();
 
-  // Merge user excludes into skip set
-  const skipDirs = new Set(DEFAULT_SKIP_DIRS);
-  for (const dir of config.exclude) {
-    skipDirs.add(dir);
-  }
-
   const framework = detectFramework(config);
+
+  // Merge user excludes into framework skipDirs
+  for (const dir of config.exclude) {
+    framework.skipDirs.add(dir);
+  }
   console.log(`  Framework:  ${framework.name}`);
   console.log(`  Output:     ${config.output}/`);
   if (framework.hasPrisma) console.log(`  Prisma:     ${path.relative(ROOT, framework.prismaSchemaPath!)}`);
   console.log('');
 
   const outputDir = path.resolve(ROOT, config.output);
-  fs.mkdirSync(outputDir, { recursive: true });
+  try {
+    fs.mkdirSync(outputDir, { recursive: true });
+  } catch (err) {
+    console.error(`Error: could not create output directory "${outputDir}": ${(err as Error).message}`);
+    process.exit(1);
+  }
 
   const generators: [string, () => string | null][] = [
     ['routes.md', () => generateRoutes(framework)],
@@ -950,7 +969,13 @@ function main() {
 
   for (const [filename, generator] of generators) {
     const start = Date.now();
-    const content = generator();
+    let content: string | null;
+    try {
+      content = generator();
+    } catch (err) {
+      console.warn(`  ${pad(filename, 20)} ERROR: ${(err as Error).message}`);
+      continue;
+    }
     const elapsed = Date.now() - start;
 
     if (content === null) {
@@ -963,7 +988,12 @@ function main() {
     totalFiles++;
 
     const outPath = path.join(outputDir, filename);
-    fs.writeFileSync(outPath, content, 'utf-8');
+    try {
+      fs.writeFileSync(outPath, content, 'utf-8');
+    } catch (err) {
+      console.error(`  ${pad(filename, 20)} ERROR writing file: ${(err as Error).message}`);
+      continue;
+    }
     console.log(`  ${pad(filename, 20)} ${pad(String(lineCount) + ' lines', 14)} (${elapsed}ms)`);
   }
 
