@@ -124,7 +124,7 @@ function generateRoutes(framework: FrameworkInfo): string | null {
 
   const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'];
   const METHOD_REGEX = new Map<string, RegExp>(
-    HTTP_METHODS.map((m) => [m, new RegExp(`export\\s+(async\\s+)?function\\s+${m}\\b`)])
+    HTTP_METHODS.map((m) => [m, new RegExp(`export\\s+(?:async\\s+)?function\\s+${m}\\b|export\\s+const\\s+${m}\\s*(?::\\s*\\w+)?\\s*=`)])
   );
 
   interface RouteInfo {

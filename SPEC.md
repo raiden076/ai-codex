@@ -112,6 +112,7 @@ src/
 - V15: `routerType` field widened from `'app' | 'pages' | null` to `string | null`. Adapters define their own values.
 - V16: `runtime` field defaults to `'node'`. SvelteKit adapter sets `'cloudflare-workers'` when `adapter-cloudflare` detected.
 - V17: Adapters do NOT import each other. All cross-cutting logic lives in `helpers.ts` or `core.ts`.
+- V18: SvelteKit `+server.ts` method detection matches both `export async function <METHOD>` and `export const <METHOD>: RequestHandler = async`. Regex must cover both function-declaration and const-arrow export forms (C10).
 
 ## §T — Tasks
 
@@ -134,3 +135,5 @@ src/
 
 | id | date | cause | fix |
 |----|------|-------|-----|
+
+| B1 | 2026-04-27 | METHOD_REGEX only matched `export function GET`. Missed `export const GET: RequestHandler = async` (const-arrow form). All r3stro server routes use const exports → routes.md skipped entirely. | V18 |

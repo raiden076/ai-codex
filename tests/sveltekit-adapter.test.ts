@@ -118,8 +118,15 @@ describe('SvelteKit adapter: generateRoutes (V7, V8, C10)', () => {
       expect(output).not.toContain('+layout');
     }
   });
-});
 
+  it('detects const-export server routes (export const GET: RequestHandler = async ...) (C10)', () => {
+    const info = detectFixture();
+    const output = sveltekitAdapter.generateRoutes(info!);
+    expect(output).not.toBeNull();
+    // api/items uses const-export style
+    expect(output!).toMatch(/GET,POST,DELETE.*\/api\/items/);
+  });
+});
 // ---------------------------------------------------------------------------
 // V7, V12, V13: generatePages
 // ---------------------------------------------------------------------------
