@@ -123,7 +123,7 @@ src/
 | T4 | x | create `src/generators/lib.ts`: extract `generateLib` | V4 |
 | T5 | x | create `src/adapters/nextjs.ts`: extract Next.js detection + `generateRoutes` + `generatePages` + `generateComponents` for Next.js | V5,I.filetree |
 | T6 | x | create `src/core.ts`: orchestrator — `detectFramework` loops adapters, main generation loop, CLI output formatting | V1,V2,I.adapter |
-| T7 | . | slim `src/generate-codex.ts`: CLI entry only — parse args, import core, call main | V14,C17 |
+| T7 | x | slim `src/generate-codex.ts`: CLI entry only — parse args, import core, call main | V14,C17 |
 | T8 | . | verify Next.js output byte-identical (excluding timestamps) after refactor | V5 |
 | T9 | . | create `src/adapters/sveltekit.ts`: `detect` via `svelte.config.js`, route resolution (`+server.ts`, `[param]`, `(group)`), page tree (`+page.svelte`, SSR/CSR, actions), component props (`$props()`, `export let`), runtime detection | V6-V9,V12,V13,V15,V16,C9-C16 |
 | T10 | . | add `wrangler.jsonc`/`wrangler.toml` parser to sveltekit adapter: extract bindings, set `runtime: 'cloudflare-workers'` | V11,V16,C12,C14 |
