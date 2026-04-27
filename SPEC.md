@@ -118,7 +118,7 @@ src/
 | id | status | task | cites |
 |----|--------|------|-------|
 | T1 | x | create `src/types.ts`: extract + extend `FrameworkAdapter`, `FrameworkInfo`, `SchemaSource`, `Config` interfaces | I.adapter,I.info,C18 |
-| T2 | . | create `src/helpers.ts`: extract `walk`, `readFileSafe`, `pad`, `shouldSkipFile`, `findDirsNamed`, `DEFAULT_SKIP_DIRS`, `ROOT`, `TODAY` | C7 |
+| T2 | x | create `src/helpers.ts`: extract `walk`, `readFileSafe`, `pad`, `shouldSkipFile`, `findDirsNamed`, `DEFAULT_SKIP_DIRS`, `ROOT`, `TODAY` | C7 |
 | T3 | . | create `src/generators/schema.ts`: extract `parsePrismaSchema`, `parseDrizzleSchema`, `generateSchema` + add `src/lib/server/db/` paths + `wrangler.jsonc` binding comment | V4,V10,V11,I.output |
 | T4 | . | create `src/generators/lib.ts`: extract `generateLib` | V4 |
 | T5 | . | create `src/adapters/nextjs.ts`: extract Next.js detection + `generateRoutes` + `generatePages` + `generateComponents` for Next.js | V5,I.filetree |
