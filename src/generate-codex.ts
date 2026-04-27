@@ -24,17 +24,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import type { Config, SchemaSource, FrameworkInfo, SchemaModelField, SchemaModelRelation, SchemaModelInfo } from './types';
 
 // ---------------------------------------------------------------------------
 // CLI Argument Parsing
 // ---------------------------------------------------------------------------
 
-interface Config {
-  output: string;
-  include: string[];
-  exclude: string[];
-  schema: string | null;
-}
 
 function parseArgs(): Config {
   const args = process.argv.slice(2);
@@ -204,20 +199,6 @@ function pad(str: string, len: number): string {
 // Framework Detection
 // ---------------------------------------------------------------------------
 
-interface SchemaSource {
-  kind: 'prisma' | 'drizzle';
-  path: string;
-}
-
-interface FrameworkInfo {
-  name: string;
-  appDir: string | null;
-  routerType: 'app' | 'pages' | null;
-  libDirs: string[];
-  componentDirs: string[];
-  schemaSources: SchemaSource[];
-  skipDirs: Set<string>;
-}
 
 function detectFramework(config: Config): FrameworkInfo {
   const info: FrameworkInfo = {
@@ -228,6 +209,7 @@ function detectFramework(config: Config): FrameworkInfo {
     componentDirs: [],
     schemaSources: [],
     skipDirs: new Set(DEFAULT_SKIP_DIRS),
+    runtime: 'node',
   };
 
   // Detect Next.js
@@ -750,22 +732,6 @@ function generateLib(framework: FrameworkInfo, config: Config): string | null {
 // 4. schema.md -- Database Schema (Prisma)
 // ---------------------------------------------------------------------------
 
-interface SchemaModelField {
-  name: string;
-  type: string;
-  flags: string[];
-  comment: string;
-}
-interface SchemaModelRelation {
-  fieldName: string;
-  target: string;
-  isArray: boolean;
-}
-interface SchemaModelInfo {
-  name: string;
-  fields: SchemaModelField[];
-  relations: SchemaModelRelation[];
-}
 
 function parsePrismaSchema(content: string): SchemaModelInfo[] {
   const SKIP_AUDIT_FIELDS = new Set(['createdAt', 'updatedAt', 'deletedAt', 'isDeleted']);
