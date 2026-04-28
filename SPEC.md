@@ -36,6 +36,7 @@ npx ai-codex --output .claude/codex
 npx ai-codex --include src/lib
 npx ai-codex --exclude tests
 npx ai-codex --schema src/lib/server/db/schema.ts
+npx ai-codex --quiet                   → silent, for hooks/CI
 ```
 
 ### I.adapter — FrameworkAdapter contract
@@ -113,6 +114,7 @@ src/
 - V16: `runtime` field defaults to `'node'`. SvelteKit adapter sets `'cloudflare-workers'` when `adapter-cloudflare` detected.
 - V17: Adapters do NOT import each other. All cross-cutting logic lives in `helpers.ts` or `core.ts`.
 - V18: SvelteKit `+server.ts` method detection matches both `export async function <METHOD>` and `export const <METHOD>: RequestHandler = async`. Regex must cover both function-declaration and const-arrow export forms (C10).
+- V19: `--quiet` / `-q` flag suppresses all console.log output. console.error + console.warn always visible. Errors still exit non-zero. For hooks/CI use.
 
 ## §T — Tasks
 

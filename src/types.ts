@@ -7,6 +7,7 @@ export interface Config {
   include: string[];
   exclude: string[];
   schema: string | null;
+  quiet: boolean;
 }
 
 export interface SchemaSource {

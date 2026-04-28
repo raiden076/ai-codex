@@ -125,7 +125,9 @@ export interface MainResult {
 }
 
 export function main(config: Config): MainResult {
-  console.log('\nai-codex -- codebase indexer for AI assistants\n');
+  const log = config.quiet ? () => {} : console.log.bind(console);
+
+  log('\nai-codex -- codebase indexer for AI assistants\n');
 
   const framework = detectFramework(config);
 
@@ -133,13 +135,13 @@ export function main(config: Config): MainResult {
   for (const dir of config.exclude) {
     framework.skipDirs.add(dir);
   }
-  console.log(`  Framework:  ${framework.name}`);
-  console.log(`  Output:     ${config.output}/`);
+  log(`  Framework:  ${framework.name}`);
+  log(`  Output:     ${config.output}/`);
   for (const src of framework.schemaSources) {
     const label = src.kind === 'prisma' ? 'Prisma' : 'Drizzle';
-    console.log(`  ${pad(label + ':', 12)}${path.relative(ROOT, src.path)}`);
+    log(`  ${pad(label + ':', 12)}${path.relative(ROOT, src.path)}`);
   }
-  console.log('');
+  log('');
 
   const outputDir = path.resolve(ROOT, config.output);
   try {
@@ -175,7 +177,7 @@ export function main(config: Config): MainResult {
     const elapsed = Date.now() - start;
 
     if (content === null) {
-      console.log(`  ${pad(filename, 20)} skipped (not applicable)`);
+      log(`  ${pad(filename, 20)} skipped (not applicable)`);
       continue;
     }
 
@@ -190,12 +192,12 @@ export function main(config: Config): MainResult {
       console.error(`  ${pad(filename, 20)} ERROR writing file: ${(err as Error).message}`);
       continue;
     }
-    console.log(`  ${pad(filename, 20)} ${pad(String(lineCount) + ' lines', 14)} (${elapsed}ms)`);
+    log(`  ${pad(filename, 20)} ${pad(String(lineCount) + ' lines', 14)} (${elapsed}ms)`);
   }
 
-  console.log(`\n  Total: ${totalLines} lines across ${totalFiles} files`);
-  console.log(`  Output: ${outputDir}/`);
-  console.log('');
+  log(`\n  Total: ${totalLines} lines across ${totalFiles} files`);
+  log(`  Output: ${outputDir}/`);
+  log('');
 
   return { totalLines, totalFiles, outputDir };
 }

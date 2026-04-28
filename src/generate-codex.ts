@@ -39,6 +39,7 @@ function parseArgs(): Config {
     include: [],
     exclude: [],
     schema: null,
+    quiet: false,
   };
 
   // Load config file if present
@@ -50,6 +51,7 @@ function parseArgs(): Config {
       if (fileConfig.include) config.include = fileConfig.include;
       if (fileConfig.exclude) config.exclude = fileConfig.exclude;
       if (fileConfig.schema) config.schema = fileConfig.schema;
+      if (fileConfig.quiet) config.quiet = fileConfig.quiet;
     } catch {
       console.warn('Warning: could not parse codex.config.json, using defaults');
     }
@@ -77,6 +79,10 @@ function parseArgs(): Config {
         if (i + 1 >= args.length) { console.error('Error: --schema requires a value'); process.exit(1); }
         config.schema = args[++i];
         break;
+      case '--quiet':
+      case '-q':
+        config.quiet = true;
+        break;
       case '--version':
       case '-v':
         console.log('ai-codex v1.2.0');
@@ -103,6 +109,7 @@ Options:
   --include <dirs...>   Directories to scan (default: auto-detect)
   --exclude <dirs...>   Directories to skip
   --schema <path>       Path to Prisma schema file (auto-detected)
+  --quiet, -q           Suppress output (for hooks/CI)
   --version, -v         Show version
   --help, -h            Show this help
 
